@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OBSCURA LAB — Виртуалды камера обскура</title>
+<style>
+:root{--bg:#0b1220;--panel:#121d31;--line:#263754;--text:#edf4ff;--muted:#a9bad3;--accent:#66d9c2;--accent2:#f3b45b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0%,#1a3150 0,#0b1220 48%);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1100px;margin:auto;padding:28px 18px 50px}.top{display:flex;align-items:center;gap:14px;margin-bottom:8px}.logo{font-size:34px}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.12em;font-size:12px}h1{font-size:clamp(30px,5vw,48px);margin:0}h2{margin:0 0 12px;font-size:20px}.intro{color:var(--muted);margin:8px 0 24px}
+.layout{display:grid;grid-template-columns:290px 1fr;gap:18px}.panel,.stage,.stats{background:rgba(18,29,49,.94);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 14px 40px #0003}
+.control{margin:20px 0}.control label{display:flex;justify-content:space-between;gap:10px;font-weight:650}.value{color:var(--accent);font-variant-numeric:tabular-nums}input[type=range]{width:100%;accent-color:var(--accent);margin-top:12px}
+.hint{color:var(--muted);font-size:13px}.views{display:grid;grid-template-columns:1fr 1fr;gap:14px}.view{background:#f5f7fb;border-radius:14px;padding:12px;color:#26344a;min-width:0}.view strong{display:block;margin:0 0 8px;font-size:14px}canvas{display:block;width:100%;height:auto;border-radius:8px;background:white}.stats{margin-top:18px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric{background:#0d1728;border:1px solid var(--line);border-radius:12px;padding:14px}.metric span{display:block;color:var(--muted);font-size:13px}.metric b{font-size:24px;color:var(--accent)}.notice{margin-top:16px;color:#d7e5f5;background:#172a40;border-left:3px solid var(--accent2);padding:12px 14px;border-radius:8px;font-size:13px}footer{color:var(--muted);font-size:12px;margin-top:22px;text-align:center}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.views{grid-template-columns:1fr}.panel{order:0}}
+</style>
+</head>
+<body><main>
+<div class="top"><div class="logo">🔬</div><div><div class="eyebrow">ВИРТУАЛДЫ ЗЕРТХАНА</div><h1>OBSCURA LAB</h1></div></div>
+<p class="intro">Камера обскураның жұмысын зертте: саңылау диаметрі мен камера ұзындығын өзгертіп, кескіннің қалай өзгеретінін бақыла.</p>
+<div class="layout">
+<aside class="panel"><h2>Камера параметрлері</h2>
+<div class="control"><label for="diameter">Саңылау диаметрі <span class="value" id="dval">0.5 мм</span></label><input id="diameter" type="range" min=".3" max="1" step=".1" value=".5"><p class="hint">Диаметр кішірейгенде кескін әдетте анығырақ, бірақ күңгірттеу болады.</p></div>
+<div class="control"><label for="length">Камера ұзындығы <span class="value" id="vval">40 мм</span></label><input id="length" type="range" min="20" max="50" step="5" value="40"><p class="hint">Ұзындық кескіннің масштабын өзгертеді.</p></div>
+<div class="notice">Бұл — оқу мақсатындағы қарапайым визуалды модель. Нақты оптикалық тәжірибені толық қайталамайды.</div>
+</aside>
+<section><div class="stage"><h2>Кескінді салыстыру</h2><div class="views">
+<div class="view"><strong>Бастапқы нысан</strong><canvas id="source" width="400" height="300"></canvas></div>
+<div class="view"><strong>Камера экранындағы кескін</strong><canvas id="image" width="400" height="300"></canvas></div>
+</div></div>
+<div class="stats"><h2>Таңдалған параметрлер</h2><div class="metrics"><div class="metric"><span>Саңылау диаметрі</span><b id="dm">0.5 мм</b></div><div class="metric"><span>Камера ұзындығы</span><b id="vm">40 мм</b></div></div></div></section>
+</div><footer>OBSCURA LAB · Физиканы тәжірибе арқылы үйрен</footer>
+</main>
+<script>
+const src=document.getElementById('source'), out=document.getElementById('image');
+const s=src.getContext('2d'), o=out.getContext('2d');
+function drawScene(){
+ s.fillStyle='#fff';s.fillRect(0,0,400,300);
+ s.fillStyle='orange';s.beginPath();s.arc(330,60,30,0,Math.PI*2);s.fill();
+ s.fillStyle='#2878d0';s.fillRect(130,140,140,140);
+ s.fillStyle='#e34b4b';s.beginPath();s.moveTo(110,145);s.lineTo(200,40);s.lineTo(290,145);s.closePath();s.fill();
+ s.fillStyle='#ffe16a';s.fillRect(160,170,35,40);s.fillRect(215,170,35,40);
+}
+function update(){
+ const d=+document.getElementById('diameter').value,v=+document.getElementById('length').value;
+ document.getElementById('dval').textContent=d.toFixed(1)+' мм';document.getElementById('vval').textContent=v+' мм';
+ document.getElementById('dm').textContent=d.toFixed(1)+' мм';document.getElementById('vm').textContent=v+' мм';
+ const scale=v/40, w=400*scale,h=300*scale;
+ o.fillStyle='#fff';o.fillRect(0,0,400,300);
+ // Draw a rotated, scaled copy of source using canvas transform.
+ o.save();o.translate(200,150);o.rotate(Math.PI);o.scale(scale,scale);o.drawImage(src,-200,-150);o.restore();
+ // Approximate aperture blur using a temporary canvas and CSS-like canvas filter.
+ const temp=document.createElement('canvas');temp.width=400;temp.height=300;
+ temp.getContext('2d').drawImage(out.canvas,0,0);
+ o.clearRect(0,0,400,300);o.filter=`blur(${Math.max(0,(d-.3)*2.2)}px)`;o.drawImage(temp,0,0);o.filter='none';
+ const brightness=Math.min(2,(.5/d)**2);
+ const img=o.getImageData(0,0,400,300),data=img.data;
+ for(let i=0;i<data.length;i+=4){data[i]=Math.min(255,data[i]*brightness);data[i+1]=Math.min(255,data[i+1]*brightness);data[i+2]=Math.min(255,data[i+2]*brightness);}
+ o.putImageData(img,0,0);
+}
+drawScene();update();
+document.getElementById('diameter').addEventListener('input',update);
+document.getElementById('length').addEventListener('input',update);
+</script></body></html>
